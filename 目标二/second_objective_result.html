@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>第二目标优化结果</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --ink: #1d2733;
+      --muted: #667085;
+      --line: #d8dee8;
+      --grid: #e7ebf2;
+      --obstacle: #2f3542;
+      --a: #2364aa;
+      --b: #2a9d8f;
+      --c: #e76f51;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+
+    header {
+      padding: 24px 32px 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 24px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(420px, 1fr) 360px;
+      gap: 18px;
+      padding: 20px 32px 28px;
+    }
+
+    .workspace,
+    .side {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .workspace {
+      padding: 18px;
+    }
+
+    .canvas-wrap {
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      aspect-ratio: 1 / 1;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      height: 36px;
+      min-width: 76px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    button.primary {
+      color: #fff;
+      background: #1f6feb;
+      border-color: #1f6feb;
+    }
+
+    input[type="range"] {
+      width: 100%;
+    }
+
+    .time {
+      min-width: 78px;
+      text-align: right;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .side {
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .metric-value {
+      font-size: 22px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .metric-value.highlight {
+      color: #1f6feb;
+    }
+
+    .legend {
+      display: grid;
+      gap: 10px;
+    }
+
+    .legend-item {
+      display: grid;
+      grid-template-columns: 16px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot.a { background: var(--a); }
+    .dot.b { background: var(--b); }
+    .dot.c { background: var(--c); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: 8px 6px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .status {
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      background: #fbfcfe;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+        padding: 16px;
+      }
+
+      header {
+        padding: 20px 16px 12px;
+      }
+
+      .controls {
+        grid-template-columns: auto auto 1fr;
+      }
+
+      .time {
+        grid-column: 1 / -1;
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>第二目标优化结果</h1>
+    <p class="subtitle">
+      在保持集群路径总长度最短的前提下，进一步优化集群总耗时（最后一辆车到达终点的时间）。
+    </p>
+  </header>
+
+  <main>
+    <section class="workspace" aria-label="动画展示区">
+      <div class="canvas-wrap">
+        <canvas id="map" width="720" height="720"></canvas>
+      </div>
+      <div class="controls">
+        <button id="play" class="primary" type="button">播放</button>
+        <button id="reset" type="button">重置</button>
+        <input id="slider" type="range" min="0" max="18" value="0" step="1" aria-label="时间步" />
+        <div id="time" class="time">t = 0 / 18</div>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="结果说明">
+      <div>
+        <div class="metric-row">
+          <span class="metric-label">查看文件</span>
+          <select id="fileSelect" aria-label="选择展示文件">
+            <option value="objective2">multi_agent_A_star_second_objective.py</option>
+            <option value="objective1">multi_agent_A_star_first_objective.py</option>
+          </select>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">版本说明</span>
+          <strong id="fileDescription">第二目标优化版本</strong>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">集群路径总长度</span>
+          <span class="metric-value" id="totalLength">47</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">集群总耗时（最晚到达）</span>
+          <span class="metric-value highlight" id="totalMakespan">18</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">总时间步</span>
+          <span class="metric-value" id="totalTime">18</span>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>版本</th>
+            <th>总路径长度</th>
+            <th>总耗时</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>第一目标优化</td>
+            <td>47</td>
+            <td>26</td>
+            <td>联合状态 A*，仅以集群路径总长度最短为目标。</td>
+          </tr>
+          <tr>
+            <td>第二目标优化</td>
+            <td>47</td>
+            <td>18</td>
+            <td>双目标字典序搜索：先最短路径，再最短总耗时。</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="status" id="status"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>车辆</th>
+            <th>当前位置</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="vehicleTable"></tbody>
+      </table>
+    </aside>
+  </main>
+
+  <script>
+    const gridSize = 10;
+    const obstacles = [
+      [4, 3], [4, 4], [4, 5], [4, 6]
+    ];
+
+    const datasets = {
+      objective2: {
+        file: "multi_agent_A_star_second_objective.py",
+        description: "第二目标优化版本",
+        note: "在集群路径总长度最短的前提下，进一步最小化集群总耗时（最后一辆车到达终点的时间）。",
+        maxT: 18,
+        totalLength: 47,
+        totalMakespan: 18,
+        vehicles: [
+          {
+            id: "A",
+            color: "#2364aa",
+            start: [0, 0],
+            goal: [9, 9],
+            path: [
+              [0,0,0],[0,1,1],[0,2,2],[0,3,3],[0,4,4],[0,5,5],
+              [0,6,6],[0,7,7],[0,8,8],[0,9,9],[1,9,10],[2,9,11],
+              [3,9,12],[4,9,13],[5,9,14],[6,9,15],[7,9,16],[8,9,17],
+              [9,9,18]
+            ],
+            length: 18
+          },
+          {
+            id: "B",
+            color: "#2a9d8f",
+            start: [9, 0],
+            goal: [0, 9],
+            path: [
+              [9,0,0],[9,1,1],[9,2,2],[9,3,3],[9,4,4],[9,5,5],
+              [9,6,6],[9,7,7],[9,8,8],[8,8,9],[7,8,10],[6,8,11],
+              [5,8,12],[4,8,13],[4,9,14],[3,9,15],[2,9,16],[1,9,17],
+              [0,9,18]
+            ],
+            length: 18
+          },
+          {
+            id: "C",
+            color: "#e76f51",
+            start: [4, 0],
+            goal: [4, 9],
+            path: [
+              [4,0,0],[4,0,1],[4,0,2],[4,0,3],[4,0,4],[4,0,5],
+              [4,0,6],[4,0,7],[4,1,8],[4,2,9],[5,2,10],[5,3,11],
+              [5,4,12],[5,5,13],[5,6,14],[5,7,15],[5,8,16],[5,9,17],
+              [4,9,18]
+            ],
+            length: 11
+          }
+        ]
+      },
+      objective1: {
+        file: "multi_agent_A_star_first_objective.py",
+        description: "第一目标优化版本（作为参照）",
+        note: "联合状态 A*，以集群路径总长度最短为目标；不优化总耗时。",
+        maxT: 26,
+        totalLength: 47,
+        totalMakespan: 26,
+        vehicles: [
+          {
+            id: "A",
+            color: "#2364aa",
+            start: [0, 0],
+            goal: [9, 9],
+            path: [
+              [0,0,0],[0,1,1],[0,2,2],[0,3,3],[0,4,4],[0,5,5],
+              [0,6,6],[0,7,7],[0,8,8],[0,9,9],[1,9,10],[2,9,11],
+              [3,9,12],[4,9,13],[5,9,14],[6,9,15],[7,9,16],[8,9,17],
+              [9,9,18],[9,9,19],[9,9,20],[9,9,21],[9,9,22],[9,9,23],
+              [9,9,24],[9,9,25],[9,9,26]
+            ],
+            length: 18
+          },
+          {
+            id: "B",
+            color: "#2a9d8f",
+            start: [9, 0],
+            goal: [0, 9],
+            path: [
+              [9,0,0],[9,1,1],[9,2,2],[9,3,3],[9,4,4],[9,5,5],
+              [9,6,6],[9,7,7],[9,8,8],[8,8,9],[7,8,10],[6,8,11],
+              [5,8,12],[4,8,13],[4,9,14],[3,9,15],[2,9,16],[1,9,17],
+              [0,9,18],[0,9,19],[0,9,20],[0,9,21],[0,9,22],[0,9,23],
+              [0,9,24],[0,9,25],[0,9,26]
+            ],
+            length: 18
+          },
+          {
+            id: "C",
+            color: "#e76f51",
+            start: [4, 0],
+            goal: [4, 9],
+            path: [
+              [4,0,0],[4,1,1],[4,2,2],[4,2,3],[4,2,4],[4,2,5],
+              [4,2,6],[4,2,7],[4,2,8],[4,2,9],[4,2,10],[4,2,11],
+              [4,2,12],[4,2,13],[4,2,14],[4,2,15],[4,2,16],[4,2,17],
+              [5,2,18],[5,3,19],[5,4,20],[5,5,21],[5,6,22],[5,7,23],
+              [5,8,24],[5,9,25],[4,9,26]
+            ],
+            length: 11
+          }
+        ]
+      }
+    };
+
+    const canvas = document.getElementById("map");
+    const ctx = canvas.getContext("2d");
+    const fileSelect = document.getElementById("fileSelect");
+    const fileDescription = document.getElementById("fileDescription");
+    const totalLength = document.getElementById("totalLength");
+    const totalMakespan = document.getElementById("totalMakespan");
+    const totalTime = document.getElementById("totalTime");
+    const legend = document.getElementById("legend");
+    const playButton = document.getElementById("play");
+    const resetButton = document.getElementById("reset");
+    const slider = document.getElementById("slider");
+    const timeLabel = document.getElementById("time");
+    const table = document.getElementById("vehicleTable");
+    const status = document.getElementById("status");
+
+    let currentT = 0;
+    let playing = false;
+    let timer = null;
+    let active = datasets.objective2;
+
+    function vehicles() {
+      return active.vehicles;
+    }
+
+    function maxT() {
+      return active.maxT;
+    }
+
+    function cellSize() {
+      return canvas.width / gridSize;
+    }
+
+    function centerOf(row, col) {
+      const size = cellSize();
+      return {
+        x: col * size + size / 2,
+        y: row * size + size / 2
+      };
+    }
+
+    function positionAt(vehicle, t) {
+      return vehicle.path[Math.min(t, vehicle.path.length - 1)];
+    }
+
+    function movedAt(vehicle, t) {
+      if (t === 0) {
+        return false;
+      }
+      const prev = positionAt(vehicle, t - 1);
+      const curr = positionAt(vehicle, t);
+      return prev[0] !== curr[0] || prev[1] !== curr[1];
+    }
+
+    function drawGrid() {
+      const size = cellSize();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      for (let i = 0; i <= gridSize; i += 1) {
+        ctx.beginPath();
+        ctx.moveTo(i * size, 0);
+        ctx.lineTo(i * size, canvas.height);
+        ctx.moveTo(0, i * size);
+        ctx.lineTo(canvas.width, i * size);
+        ctx.strokeStyle = "#e7ebf2";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+
+      ctx.fillStyle = "#2f3542";
+      obstacles.forEach(([row, col]) => {
+        ctx.fillRect(col * size + 2, row * size + 2, size - 4, size - 4);
+      });
+
+      ctx.fillStyle = "#667085";
+      ctx.font = "12px Segoe UI, Arial";
+      for (let i = 0; i < gridSize; i += 1) {
+        ctx.fillText(String(i), i * size + 6, 16);
+        ctx.fillText(String(i), 6, i * size + 16);
+      }
+    }
+
+    function drawPath(vehicle) {
+      const size = cellSize();
+      ctx.beginPath();
+      vehicle.path.forEach(([row, col], index) => {
+        const point = centerOf(row, col);
+        if (index === 0) {
+          ctx.moveTo(point.x, point.y);
+        } else {
+          ctx.lineTo(point.x, point.y);
+        }
+      });
+      ctx.strokeStyle = vehicle.color;
+      ctx.lineWidth = Math.max(3, size * 0.05);
+      ctx.globalAlpha = 0.28;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawStartGoal(vehicle) {
+      const size = cellSize();
+      const start = centerOf(vehicle.start[0], vehicle.start[1]);
+      const goal = centerOf(vehicle.goal[0], vehicle.goal[1]);
+
+      ctx.fillStyle = vehicle.color;
+      ctx.globalAlpha = 0.18;
+      ctx.fillRect(start.x - size * 0.28, start.y - size * 0.28, size * 0.56, size * 0.56);
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle = vehicle.color;
+      ctx.lineWidth = 3;
+      ctx.strokeRect(goal.x - size * 0.26, goal.y - size * 0.26, size * 0.52, size * 0.52);
+    }
+
+    function drawVehicle(vehicle, t) {
+      const size = cellSize();
+      const [row, col] = positionAt(vehicle, t);
+      const point = centerOf(row, col);
+
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, size * 0.27, 0, Math.PI * 2);
+      ctx.fillStyle = vehicle.color;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = `700 ${Math.round(size * 0.28)}px Segoe UI, Arial`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(vehicle.id, point.x, point.y + 1);
+    }
+
+    function renderTable(t) {
+      table.innerHTML = vehicles().map((vehicle) => {
+        const [row, col] = positionAt(vehicle, t);
+        const state = row === vehicle.goal[0] && col === vehicle.goal[1]
+          ? "已到达"
+          : movedAt(vehicle, t)
+            ? "移动"
+            : "停留";
+        return `
+          <tr>
+            <td>${vehicle.id}</td>
+            <td>(${row}, ${col})</td>
+            <td>${state}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderStatus(t) {
+      const waiting = vehicles()
+        .filter((vehicle) => !movedAt(vehicle, t) && t !== 0)
+        .map((vehicle) => vehicle.id);
+      const text = waiting.length
+        ? `当前时间步 t=${t}，车辆 ${waiting.join("、")} 原地停留。${active.note}`
+        : `当前时间步 t=${t}，车辆按规划路径运行。${active.note}`;
+      status.textContent = text;
+    }
+
+    function renderLegend() {
+      legend.innerHTML = vehicles().map((vehicle) => `
+        <div class="legend-item">
+          <span class="dot" style="background:${vehicle.color}"></span>
+          <span>${vehicle.id}: (${vehicle.start[0]},${vehicle.start[1]}) 到 (${vehicle.goal[0]},${vehicle.goal[1]})</span>
+          <strong>${vehicle.length}</strong>
+        </div>
+      `).join("");
+    }
+
+    function renderMetrics() {
+      fileDescription.textContent = active.description;
+      totalLength.textContent = String(active.totalLength);
+      totalMakespan.textContent = String(active.totalMakespan);
+      totalTime.textContent = String(active.maxT);
+      slider.max = String(active.maxT);
+    }
+
+    function render() {
+      drawGrid();
+      vehicles().forEach(drawPath);
+      vehicles().forEach(drawStartGoal);
+      vehicles().forEach((vehicle) => drawVehicle(vehicle, currentT));
+      slider.value = String(currentT);
+      timeLabel.textContent = `t = ${currentT} / ${maxT()}`;
+      renderMetrics();
+      renderLegend();
+      renderTable(currentT);
+      renderStatus(currentT);
+    }
+
+    function stop() {
+      playing = false;
+      playButton.textContent = "播放";
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    }
+
+    function play() {
+      playing = true;
+      playButton.textContent = "暂停";
+      timer = setInterval(() => {
+        currentT += 1;
+        if (currentT > maxT()) {
+          currentT = maxT();
+          stop();
+        }
+        render();
+      }, 600);
+    }
+
+    playButton.addEventListener("click", () => {
+      if (playing) {
+        stop();
+      } else {
+        if (currentT >= maxT()) {
+          currentT = 0;
+        }
+        play();
+      }
+      render();
+    });
+
+    resetButton.addEventListener("click", () => {
+      stop();
+      currentT = 0;
+      render();
+    });
+
+    slider.addEventListener("input", (event) => {
+      stop();
+      currentT = Number(event.target.value);
+      render();
+    });
+
+    fileSelect.addEventListener("change", (event) => {
+      stop();
+      active = datasets[event.target.value];
+      currentT = 0;
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

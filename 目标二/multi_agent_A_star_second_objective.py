@@ -16,6 +16,8 @@
 
 import heapq
 import itertools
+import json
+import sys
 from dataclasses import dataclass
 
 
@@ -335,24 +337,55 @@ if __name__ == "__main__":
         {"id": "C", "start": (4, 0), "goal": (4, 9)},
     ]
 
+    output_json = "--json" in sys.argv
+
     scheduler = MultiAgentScheduler(grid)
     paths = scheduler.plan_paths(agents)
 
-    if scheduler.total_path_length is None:
-        print("No valid cluster path!")
+    if output_json:
+        vehicle_colors = {
+            "A": "#2364aa",
+            "B": "#2a9d8f",
+            "C": "#e76f51",
+        }
+        vehicles_list = []
+        for agent in agents:
+            vehicle_id = agent["id"]
+            path = paths.get(vehicle_id)
+            vehicles_list.append({
+                "id": vehicle_id,
+                "color": vehicle_colors.get(vehicle_id, "#333333"),
+                "start": list(agent["start"]),
+                "goal": list(agent["goal"]),
+                "path": [[row, col, t] for row, col, t in path] if path else [],
+                "length": path_length(path) if path else 0,
+            })
+
+        payload = {
+            "file": "multi_agent_A_star_second_objective.py",
+            "description": "第二目标优化版本",
+            "note": "在集群总路径长度最短的前提下，进一步最小化集群总耗时（最后一辆车到达终点的时间）。",
+            "maxT": scheduler.total_makespan or 0,
+            "totalLength": scheduler.total_path_length or 0,
+            "vehicles": vehicles_list,
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        print("Second objective result:")
-        print(f"Cluster total path length: {scheduler.total_path_length}")
-        print(f"Cluster total makespan: {scheduler.total_makespan}\n")
-
-    for agent_id, path in paths.items():
-        print(f"{agent_id} Path:")
-
-        if path:
-            for x, y, t in path:
-                print(f"-> ({x},{y})@t={t}", end=" ")
-
-            print(f"\nLength: {path_length(path)}")
-            print(f"Arrival time: {path[-1][2]}\n")
+        if scheduler.total_path_length is None:
+            print("No valid cluster path!")
         else:
-            print("No valid path!\n")
+            print("Second objective result:")
+            print(f"Cluster total path length: {scheduler.total_path_length}")
+            print(f"Cluster total makespan: {scheduler.total_makespan}\n")
+
+        for agent_id, path in paths.items():
+            print(f"{agent_id} Path:")
+
+            if path:
+                for x, y, t in path:
+                    print(f"-> ({x},{y})@t={t}", end=" ")
+
+                print(f"\nLength: {path_length(path)}")
+                print(f"Arrival time: {path[-1][2]}\n")
+            else:
+                print("No valid path!\n")
