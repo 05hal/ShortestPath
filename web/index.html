@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi-Agent A* 集群路径规划 — 可视化结果</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Multi-Agent A* 集群路径规划</h1>
+    <p class="subtitle">
+      基于联合状态 A* 搜索的集群路径优化：第一目标为集群路径总长度最短，第二目标在总长度最短前提下最小化总耗时。
+    </p>
+  </header>
+
+  <main>
+    <section class="workspace" aria-label="动画展示区">
+      <div class="canvas-wrap">
+        <canvas id="map" width="720" height="720"></canvas>
+      </div>
+      <div class="controls">
+        <button id="play" class="primary" type="button">播放</button>
+        <button id="reset" type="button">重置</button>
+        <select id="fileSelect" aria-label="选择展示文件"></select>
+        <input id="slider" type="range" min="0" max="0" value="0" step="1" aria-label="时间步" />
+        <div id="time" class="time">t = 0 / 0</div>
+      </div>
+    </section>
+
+    <aside class="side" aria-label="结果说明">
+      <div>
+        <div class="metric-row">
+          <span class="metric-label">版本说明</span>
+          <strong id="fileDescription"></strong>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">集群路径总长度</span>
+          <span class="metric-value" id="totalLength">-</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">集群总耗时（最晚到达）</span>
+          <span class="metric-value highlight" id="totalMakespan">-</span>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">总时间步</span>
+          <span class="metric-value" id="totalTime">-</span>
+        </div>
+      </div>
+
+      <table id="comparisonTable">
+        <thead>
+          <tr>
+            <th>版本</th>
+            <th>总路径长度</th>
+            <th>总耗时</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+
+      <div class="legend" id="legend"></div>
+
+      <div class="status" id="status"></div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>车辆</th>
+            <th>当前位置</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="vehicleTable"></tbody>
+      </table>
+    </aside>
+  </main>
+
+  <script src="js/renderer.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/app.js"></script>
+  <script>
+    async function loadAll() {
+      const algorithms = ["first_objective", "second_objective"];
+      const datasets = {};
+
+      for (const algo of algorithms) {
+        try {
+          const resp = await fetch(`data/${algo}.json`);
+          if (resp.ok) {
+            const json = await resp.json();
+            datasets[algo] = json;
+            const select = document.getElementById("fileSelect");
+            const option = document.createElement("option");
+            option.value = algo;
+            option.textContent = json.file || algo;
+            select.appendChild(option);
+          }
+        } catch (e) {
+          console.warn(`Failed to load ${algo}.json:`, e);
+        }
+      }
+
+      App.init(datasets);
+    }
+
+    loadAll();
+  </script>
+</body>
+</html>

@@ -343,6 +343,12 @@ if __name__ == "__main__":
     paths = scheduler.plan_paths(agents)
 
     if output_json:
+        obstacles_list = [
+            [r, c]
+            for r in range(len(grid))
+            for c in range(len(grid[r]))
+            if grid[r][c] == 1
+        ]
         vehicle_colors = {
             "A": "#2364aa",
             "B": "#2a9d8f",
@@ -362,11 +368,19 @@ if __name__ == "__main__":
             })
 
         payload = {
+            "algorithm": "second_objective",
             "file": "multi_agent_A_star_second_objective.py",
             "description": "第二目标优化版本",
             "note": "在集群总路径长度最短的前提下，进一步最小化集群总耗时（最后一辆车到达终点的时间）。",
-            "maxT": scheduler.total_makespan or 0,
-            "totalLength": scheduler.total_path_length or 0,
+            "grid": {
+                "rows": len(grid),
+                "cols": len(grid[0]),
+                "obstacles": obstacles_list,
+            },
+            "metrics": {
+                "totalLength": scheduler.total_path_length or 0,
+                "makespan": scheduler.total_makespan or 0,
+            },
             "vehicles": vehicles_list,
         }
         print(json.dumps(payload, ensure_ascii=False, indent=2))

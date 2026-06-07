@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import heapq
 import itertools
+import json
+import sys
 from dataclasses import dataclass
 
 
@@ -189,19 +191,67 @@ if __name__ == "__main__":
         {"id": "C", "start": (4, 0), "goal": (4, 9)},
     ]
 
+    output_json = "--json" in sys.argv
+
     scheduler = MultiAgentScheduler(grid)
     paths = scheduler.plan_paths(agents)
 
-    if scheduler.total_path_length is None:
-        print("No valid cluster path!")
+    if output_json:
+        obstacles_list = [
+            [r, c]
+            for r in range(len(grid))
+            for c in range(len(grid[r]))
+            if grid[r][c] == 1
+        ]
+        vehicle_colors = {
+            "A": "#2364aa",
+            "B": "#2a9d8f",
+            "C": "#e76f51",
+        }
+        vehicles_list = []
+        for agent in agents:
+            vehicle_id = agent["id"]
+            path = paths.get(vehicle_id)
+            vehicles_list.append({
+                "id": vehicle_id,
+                "color": vehicle_colors.get(vehicle_id, "#333333"),
+                "start": list(agent["start"]),
+                "goal": list(agent["goal"]),
+                "path": [[row, col, t] for row, col, t in path] if path else [],
+                "length": path_length(path) if path else 0,
+            })
+        makespan_value = 0
+        valid_paths = [p for p in paths.values() if p]
+        if valid_paths:
+            makespan_value = max(p[-1][2] for p in valid_paths)
+        payload = {
+            "algorithm": "first_objective",
+            "file": "multi_agent_A_star_first_objective.py",
+            "description": "第一目标优化版本",
+            "note": "联合状态 A*，以集群路径总长度最短为目标，并检查车辆之间的顶点冲突和边冲突。",
+            "grid": {
+                "rows": len(grid),
+                "cols": len(grid[0]),
+                "obstacles": obstacles_list,
+            },
+            "metrics": {
+                "totalLength": scheduler.total_path_length or 0,
+                "makespan": makespan_value,
+            },
+            "vehicles": vehicles_list,
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        print(f"Cluster total path length: {scheduler.total_path_length}\n")
-
-    for agent_id, path in paths.items():
-        print(f"{agent_id} Path:")
-        if path:
-            for x, y, t in path:
-                print(f"-> ({x},{y})@t={t}", end=" ")
-            print(f"\nLength: {path_length(path)}\n")
+        if scheduler.total_path_length is None:
+            print("No valid cluster path!")
         else:
-            print("No valid path!\n")
+            print(f"Cluster total path length: {scheduler.total_path_length}\n")
+
+        for agent_id, path in paths.items():
+            print(f"{agent_id} Path:")
+            if path:
+                for x, y, t in path:
+                    print(f"-> ({x},{y})@t={t}", end=" ")
+                print(f"\nLength: {path_length(path)}\n")
+            else:
+                print("No valid path!\n")
