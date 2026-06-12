@@ -1,0 +1,77 @@
+{
+  "generatedAt": "2026-06-12T17:39:08",
+  "datasets": [
+    {
+      "key": "first_objective_3",
+      "file": "first_objective_3_vehicles.json",
+      "algorithm": "first_objective",
+      "description": "第一目标优化版本",
+      "vehicleCount": 3,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第一目标优化版本 - 3辆车"
+    },
+    {
+      "key": "second_objective_3",
+      "file": "second_objective_3_vehicles.json",
+      "algorithm": "second_objective",
+      "description": "第二目标优化版本",
+      "vehicleCount": 3,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第二目标优化版本 - 3辆车"
+    },
+    {
+      "key": "first_objective_5",
+      "file": "first_objective_5_vehicles.json",
+      "algorithm": "first_objective",
+      "description": "第一目标优化版本",
+      "vehicleCount": 5,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第一目标优化版本 - 5辆车"
+    },
+    {
+      "key": "second_objective_5",
+      "file": "second_objective_5_vehicles.json",
+      "algorithm": "second_objective",
+      "description": "第二目标优化版本",
+      "vehicleCount": 5,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第二目标优化版本 - 5辆车"
+    },
+    {
+      "key": "first_objective_8",
+      "file": "first_objective_8_vehicles.json",
+      "algorithm": "first_objective",
+      "description": "第一目标优化版本",
+      "vehicleCount": 8,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第一目标优化版本 - 8辆车"
+    },
+    {
+      "key": "second_objective_8",
+      "file": "second_objective_8_vehicles.json",
+      "algorithm": "second_objective",
+      "description": "第二目标优化版本",
+      "vehicleCount": 8,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第二目标优化版本 - 8辆车"
+    },
+    {
+      "key": "first_objective_10",
+      "file": "first_objective_10_vehicles.json",
+      "algorithm": "first_objective",
+      "description": "第一目标优化版本",
+      "vehicleCount": 10,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第一目标优化版本 - 10辆车"
+    },
+    {
+      "key": "second_objective_10",
+      "file": "second_objective_10_vehicles.json",
+      "algorithm": "second_objective",
+      "description": "第二目标优化版本",
+      "vehicleCount": 10,
+      "scenario": "10x10 中部障碍场景",
+      "label": "第二目标优化版本 - 10辆车"
+    }
+  ]
+}

@@ -49,8 +49,16 @@ main {
   padding: 20px 32px 28px;
 }
 
+.trend-panel {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(320px, 1fr));
+  gap: 18px;
+  padding: 0 32px 28px;
+}
+
 .workspace,
-.side {
+.side,
+.trend-card {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -78,7 +86,7 @@ canvas {
 
 .controls {
   display: grid;
-  grid-template-columns: auto auto auto 1fr auto;
+  grid-template-columns: auto auto minmax(120px, auto) minmax(180px, auto) 1fr auto;
   align-items: center;
   gap: 10px;
   margin-top: 14px;
@@ -130,6 +138,37 @@ select {
   display: flex;
   flex-direction: column;
   gap: 16px;
+  max-height: 820px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b8c2d3 transparent;
+}
+
+.side::-webkit-scrollbar {
+  width: 8px;
+}
+
+.side::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.side::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #b8c2d3;
+}
+
+.side::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.trend-card {
+  padding: 18px;
+}
+
+.trend-card h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .metric-row {
@@ -196,6 +235,8 @@ th {
 
 .status {
   min-height: 44px;
+  height: auto;
+  flex-shrink: 0;
   padding: 10px 12px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -203,6 +244,9 @@ th {
   background: #fbfcfe;
   font-size: 13px;
   line-height: 1.6;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 @media (max-width: 900px) {
@@ -211,16 +255,26 @@ th {
     padding: 16px;
   }
 
+  .trend-panel {
+    grid-template-columns: 1fr;
+    padding: 0 16px 20px;
+  }
+
   header {
     padding: 20px 16px 12px;
   }
 
   .controls {
-    grid-template-columns: auto auto auto 1fr;
+    grid-template-columns: auto auto;
   }
 
   .time {
     grid-column: 1 / -1;
     text-align: left;
+  }
+
+  select,
+  input[type="range"] {
+    grid-column: 1 / -1;
   }
 }

@@ -14,11 +14,21 @@
 - 车辆原地等待，长度 +0。
 """
 
+import argparse
 import heapq
 import itertools
 import json
 import sys
 from dataclasses import dataclass
+from pathlib import Path
+
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from experiment_utils import build_center_obstacle_scenario, build_payload
+from scalable_planner import cbs_plan, has_complete_solution, prioritized_plan
 
 
 MOVES = (
@@ -157,7 +167,33 @@ def add_nondominated_label(existing_labels, new_label):
     return filtered_labels
 
 
-def multi_agent_a_star_second_objective(grid, agents, max_time=None):
+def get_candidate_positions(grid, position, goal, guided=False):
+    candidates = []
+    for dx, dy in MOVES:
+        next_position = (position[0] + dx, position[1] + dy)
+
+        if in_bounds_and_free(grid, next_position):
+            candidates.append(next_position)
+
+    if not guided or not candidates:
+        return candidates
+
+    moving_candidates = [candidate for candidate in candidates if candidate != position]
+    if not moving_candidates:
+        return candidates
+
+    best_distance = min(manhattan(candidate, goal) for candidate in moving_candidates)
+    guided_candidates = [
+        candidate
+        for candidate in moving_candidates
+        if manhattan(candidate, goal) == best_distance
+    ]
+    if position in candidates:
+        guided_candidates.append(position)
+    return guided_candidates
+
+
+def multi_agent_a_star_second_objective(grid, agents, max_time=None, guided=False):
     """第二优化目标的集中式 Multi-Agent A*。
 
     返回：
@@ -239,16 +275,10 @@ def multi_agent_a_star_second_objective(grid, agents, max_time=None):
 
         candidate_lists = []
 
-        for position in current.positions:
-            candidates = []
-
-            for dx, dy in MOVES:
-                next_position = (position[0] + dx, position[1] + dy)
-
-                if in_bounds_and_free(grid, next_position):
-                    candidates.append(next_position)
-
-            candidate_lists.append(candidates)
+        for position, goal in zip(current.positions, goals):
+            candidate_lists.append(
+                get_candidate_positions(grid, position, goal, guided=guided)
+            )
 
         for next_positions in itertools.product(*candidate_lists):
             next_positions = tuple(next_positions)
@@ -310,9 +340,10 @@ def multi_agent_a_star_second_objective(grid, agents, max_time=None):
 
 
 class MultiAgentScheduler:
-    def __init__(self, grid, max_time=None):
+    def __init__(self, grid, max_time=None, guided=False):
         self.grid = grid
         self.max_time = max_time
+        self.guided = guided
         self.total_path_length = None
         self.total_makespan = None
 
@@ -321,76 +352,77 @@ class MultiAgentScheduler:
             self.grid,
             agents,
             self.max_time,
+            guided=self.guided,
         )
         self.total_path_length = total_length
         self.total_makespan = makespan
         return paths
 
 
+def run_experiment(vehicle_count, max_time=None):
+    scenario = build_center_obstacle_scenario(vehicle_count)
+    grid = scenario["grid"]
+    agents = scenario["agents"]
+    planner_mode = "centralized"
+    planner_note = "3 车基线实验使用集中式联合状态 A*，先优化总长度，再优化总耗时。"
+
+    if vehicle_count <= 3:
+        scheduler = MultiAgentScheduler(grid, max_time=max_time, guided=True)
+        paths = scheduler.plan_paths(agents)
+        total_length = scheduler.total_path_length
+        total_makespan = scheduler.total_makespan
+    else:
+        planner_mode = "cbs"
+        planner_note = "车辆数超过 3 时，优先使用 CBS，并按总长度优先、总耗时次优先的顺序选择冲突解。"
+        paths = cbs_plan(grid, agents, objective="makespan")
+        if not has_complete_solution(paths):
+            planner_mode = "replan"
+            planner_note = "CBS 未在预算内收敛，回退到预约表重规划，以保证多车场景可计算。"
+            paths = prioritized_plan(grid, agents, objective="makespan")
+        total_length = cluster_path_length(paths)
+        total_makespan = cluster_makespan(paths)
+
+    payload = build_payload(
+        algorithm="second_objective",
+        file_name="multi_agent_A_star_second_objective.py",
+        description="第二目标优化版本",
+        note="在总路径长度控制下进一步关注总耗时；大规模实验优先使用 CBS，并在必要时回退到预约表重规划。",
+        scenario=scenario,
+        paths=paths,
+        total_length=total_length,
+        makespan=total_makespan,
+        planner_mode=planner_mode,
+        planner_note=planner_note,
+    )
+    return payload, paths, total_length, total_makespan
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="第二目标优化实验")
+    parser.add_argument("--vehicles", type=int, default=3, help="实验车辆数")
+    parser.add_argument("--max-time", type=int, default=None, help="搜索时间上界")
+    parser.add_argument("--json", action="store_true", help="输出 JSON 数据")
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    grid = [[0] * 10 for _ in range(10)]
-    grid[4][3:7] = [1, 1, 1, 1]
+    args = parse_args()
+    payload, paths, total_length, total_makespan = run_experiment(
+        vehicle_count=args.vehicles,
+        max_time=args.max_time,
+    )
 
-    agents = [
-        {"id": "A", "start": (0, 0), "goal": (9, 9)},
-        {"id": "B", "start": (9, 0), "goal": (0, 9)},
-        {"id": "C", "start": (4, 0), "goal": (4, 9)},
-    ]
-
-    output_json = "--json" in sys.argv
-
-    scheduler = MultiAgentScheduler(grid)
-    paths = scheduler.plan_paths(agents)
-
-    if output_json:
-        obstacles_list = [
-            [r, c]
-            for r in range(len(grid))
-            for c in range(len(grid[r]))
-            if grid[r][c] == 1
-        ]
-        vehicle_colors = {
-            "A": "#2364aa",
-            "B": "#2a9d8f",
-            "C": "#e76f51",
-        }
-        vehicles_list = []
-        for agent in agents:
-            vehicle_id = agent["id"]
-            path = paths.get(vehicle_id)
-            vehicles_list.append({
-                "id": vehicle_id,
-                "color": vehicle_colors.get(vehicle_id, "#333333"),
-                "start": list(agent["start"]),
-                "goal": list(agent["goal"]),
-                "path": [[row, col, t] for row, col, t in path] if path else [],
-                "length": path_length(path) if path else 0,
-            })
-
-        payload = {
-            "algorithm": "second_objective",
-            "file": "multi_agent_A_star_second_objective.py",
-            "description": "第二目标优化版本",
-            "note": "在集群总路径长度最短的前提下，进一步最小化集群总耗时（最后一辆车到达终点的时间）。",
-            "grid": {
-                "rows": len(grid),
-                "cols": len(grid[0]),
-                "obstacles": obstacles_list,
-            },
-            "metrics": {
-                "totalLength": scheduler.total_path_length or 0,
-                "makespan": scheduler.total_makespan or 0,
-            },
-            "vehicles": vehicles_list,
-        }
+    if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
     else:
-        if scheduler.total_path_length is None:
+        if total_length is None:
             print("No valid cluster path!")
         else:
+            print(f"Scenario: {payload['scenario']['label']}")
+            print(f"Vehicle count: {payload['metrics']['vehicleCount']}")
             print("Second objective result:")
-            print(f"Cluster total path length: {scheduler.total_path_length}")
-            print(f"Cluster total makespan: {scheduler.total_makespan}\n")
+            print(f"Cluster total path length: {total_length}")
+            print(f"Cluster total makespan: {total_makespan}\n")
 
         for agent_id, path in paths.items():
             print(f"{agent_id} Path:")

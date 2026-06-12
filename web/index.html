@@ -22,7 +22,8 @@
       <div class="controls">
         <button id="play" class="primary" type="button">播放</button>
         <button id="reset" type="button">重置</button>
-        <select id="fileSelect" aria-label="选择展示文件"></select>
+        <select id="vehicleCountSelect" aria-label="选择车辆数量"></select>
+        <select id="algorithmSelect" aria-label="选择算法版本"></select>
         <input id="slider" type="range" min="0" max="0" value="0" step="1" aria-label="时间步" />
         <div id="time" class="time">t = 0 / 0</div>
       </div>
@@ -31,8 +32,20 @@
     <aside class="side" aria-label="结果说明">
       <div>
         <div class="metric-row">
+          <span class="metric-label">实验场景</span>
+          <strong id="scenarioLabel"></strong>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">车辆数量</span>
+          <span class="metric-value" id="vehicleCount">-</span>
+        </div>
+        <div class="metric-row">
           <span class="metric-label">版本说明</span>
           <strong id="fileDescription"></strong>
+        </div>
+        <div class="metric-row">
+          <span class="metric-label">规划模式</span>
+          <strong id="plannerMode"></strong>
         </div>
         <div class="metric-row">
           <span class="metric-label">集群路径总长度</span>
@@ -77,29 +90,41 @@
     </aside>
   </main>
 
+  <section class="trend-panel" aria-label="实验趋势">
+    <div class="trend-card">
+      <h2>总路径长度趋势</h2>
+      <div id="lengthTrend"></div>
+    </div>
+    <div class="trend-card">
+      <h2>总耗时趋势</h2>
+      <div id="makespanTrend"></div>
+    </div>
+  </section>
+
   <script src="js/renderer.js"></script>
   <script src="js/player.js"></script>
   <script src="js/app.js"></script>
   <script>
     async function loadAll() {
-      const algorithms = ["first_objective", "second_objective"];
       const datasets = {};
 
-      for (const algo of algorithms) {
-        try {
-          const resp = await fetch(`data/${algo}.json`);
-          if (resp.ok) {
-            const json = await resp.json();
-            datasets[algo] = json;
-            const select = document.getElementById("fileSelect");
-            const option = document.createElement("option");
-            option.value = algo;
-            option.textContent = json.file || algo;
-            select.appendChild(option);
-          }
-        } catch (e) {
-          console.warn(`Failed to load ${algo}.json:`, e);
+      try {
+        const manifestResp = await fetch("data/manifest.json");
+        if (!manifestResp.ok) {
+          throw new Error("manifest.json not found");
         }
+
+        const manifest = await manifestResp.json();
+        for (const item of manifest.datasets || []) {
+          const resp = await fetch(`data/${item.file}`);
+          if (!resp.ok) {
+            continue;
+          }
+          const json = await resp.json();
+          datasets[item.key] = json;
+        }
+      } catch (e) {
+        console.warn("Failed to load manifest:", e);
       }
 
       App.init(datasets);
